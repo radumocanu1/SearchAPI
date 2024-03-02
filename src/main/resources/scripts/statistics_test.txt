@@ -1,0 +1,51 @@
+# Auto-generated statistics file
+# The first value is the timestamp at which the file was written
+# Each thread is writing the following after finishing:
+# It's name
+# 1. total number of websites it tried to crawl
+# 2. number of unsuccessfully crawled websites
+# 3. total number of phone numbers found
+# 4. total number of social media links found
+# 5. total number of locations found
+# 6. how many websites had phone numbers
+# 7. how many websites had social media links
+# 8. how many websites had locations
+
+02.03.2024-20.54.33
+
+----------- Thread 0 -----------
+100
+20
+5
+10
+2
+1
+1
+1
+----------- Thread 1 -----------
+100
+20
+5
+10
+2
+1
+1
+1
+----------- Thread 2 -----------
+100
+20
+5
+10
+2
+1
+1
+1
+----------- Thread 3 -----------
+100
+20
+5
+10
+2
+1
+1
+1
