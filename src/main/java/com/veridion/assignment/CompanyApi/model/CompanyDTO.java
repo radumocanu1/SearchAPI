@@ -1,2 +1,8 @@
-package com.veridion.assignment.CompanyApi.model;public class CompanyDTO {
+package com.veridion.assignment.CompanyApi.model;
+
+import lombok.ToString;
+
+@ToString
+public class CompanyDTO {
+
 }

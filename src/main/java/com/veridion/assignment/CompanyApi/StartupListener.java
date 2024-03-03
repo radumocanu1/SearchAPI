@@ -1,3 +1,5 @@
+package com.veridion.assignment.CompanyApi;
+
 import com.veridion.assignment.CompanyApi.threadServices.ThreadRunner;
 import lombok.AllArgsConstructor;
 import org.springframework.context.ApplicationListener;
@@ -13,6 +15,8 @@ public class StartupListener implements ApplicationListener<ContextRefreshedEven
 
     @Override
     public void onApplicationEvent(ContextRefreshedEvent event) {
-        threadRunner.startReaderThread();
+        // Starts the 2 separate threads as soon as spring context is initialized
+        threadRunner.startCsvReaderThread();
+        threadRunner.startDatapointsReaderThread();
     }
 }

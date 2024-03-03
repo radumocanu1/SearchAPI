@@ -10,6 +10,8 @@ from bs4 import BeautifulSoup
 from requests.exceptions import RequestException, SSLError
 import time
 import subprocess
+import shutil
+
 
 script_directory = os.path.dirname(os.path.abspath(__file__))
 stats_file_write_lock = threading.Lock()
@@ -18,8 +20,7 @@ data_file_write_lock = threading.Lock()
 local_thread_instance = threading.local()
 file_with_comments = f'{script_directory}/comments_for_stats_file.txt'
 stats_file = f'{script_directory}/statistics.txt'
-# trebuie pus in alt director pe care sa il vada springul
-data_file = f'{script_directory}/extracted_data/unprocessed_data.txt'
+data_file = f'{script_directory}/extracted_data/still_processing.csv'
 targeted_social_media_domains = f'{script_directory}/targeted_social_media_domains.txt'
 data_analyzer_path = f'{script_directory}/data_analyzer.py'
 def init_local_thread_instance():
@@ -36,17 +37,20 @@ def init_local_thread_instance():
     local_thread_instance.website_with_location = 0
 
 def add_datapoints_to_data_extracted_file_asynchronous():
-    with open(data_file, 'a') as file:
+    with open(data_file, 'a', newline='') as file:
         data_file_write_lock.acquire()
         try:
+            csv_writer = csv.writer(file, delimiter=',')
+
             for domain, data in local_thread_instance.datapoints.items():
-                file.write(f'{domain} : | ')
-                for data_set in data:
-                    file.write(f'{", ".join(str(element) for element in data_set)} | ')
-                file.write('\n')
+                row = [domain]
+                data_strings = ['|'.join(map(str, data_set)) for data_set in data]
+                row.extend(data_strings)
+                csv_writer.writerow(row)
         finally:
             # Release the lock after writing to the file
             data_file_write_lock.release()
+
 def add_stats_to_statistics_file_asynchronous(thread_number):
     with open(stats_file, 'a') as file:
         stats_file_write_lock.acquire()
@@ -69,10 +73,16 @@ def generate_empty_stats_file():
         file_content = source_file.read()
     with open(stats_file, 'w') as destination_file:
         destination_file.write(file_content)
+
+def rename_data_file():
+    new_file_name = f"data-{get_current_timestamp()}.csv"
+    original_directory = os.path.dirname(data_file)
+    new_file_path = os.path.join(original_directory, new_file_name)
+    shutil.move(data_file, new_file_path)
+
 def generate_empty_data_file():
     with open(data_file, 'w') as file:
-        file.write('domain : | phone numbers | social media links | locations |\n')
-        file.write('\n')
+        file.write('domain,phone number,social media links,locations\n')
 
 
 def prepare_environment(social_media_domains_file_path):
@@ -161,7 +171,6 @@ def scrape_websites_from_csv_chunk(csv_chunk):
     for row in csv_chunk:
         local_thread_instance.total_number_of_websites += 1
         domain = row[0]
-        print(domain)
         try:
             page_data = get_page_data(domain)
         except Exception as e:
@@ -231,6 +240,9 @@ def worker_function(csv_chunk, thread_number):
     add_stats_to_statistics_file_asynchronous(thread_number)
     return
 
+def get_current_timestamp():
+    return str(datetime.now().strftime("%d.%m.%Y-%H.%M.%S"))
+
 def add_timestamp():
     with open(stats_file, 'r') as file:
         lines = file.readlines()
@@ -238,7 +250,7 @@ def add_timestamp():
     # Găsește a doua linie care nu începe cu #
     for index, line in enumerate(lines):
         if not line.startswith('#'):
-            lines.insert(index + 1, str(datetime.now().strftime("%d.%m.%Y-%H.%M.%S")) + '\n')
+            lines.insert(index + 1, get_current_timestamp() + '\n')
             break
 
     with open(stats_file, 'w') as file:
@@ -247,43 +259,23 @@ def add_timestamp():
 
 if __name__ == '__main__':
     start_time = time.time()
-    if True:
-        global verbose
-        global total_number_of_websites
-        global unsuccessfuly_scraped_websites
-        global phone_numbers_found
-        global social_media_links_found
-        global locations_found
-        parser = argparse.ArgumentParser(description='Scrape data from a CSV file.')
-        parser.add_argument('-f', '--file', required=True, help='Path to the CSV file')
-        parser.add_argument('-v', '--verbose', action='store_true', help='Print verbose error messages')
-        parser.add_argument('-t', '--threads', required=True, help='Number of threads for scraping')
-        args = parser.parse_args()
-        verbose = args.verbose
-        prepare_environment(targeted_social_media_domains)
-        start_threads(int(args.threads), args.file)
-        print("A durat " + str((time.time() - start_time)))
-        # add timestamp to statistics file to be processed by the data_analyzer.py script
-        add_timestamp()
-        # run data analysis on statistics file
-        subprocess.run(['python', data_analyzer_path])
-
-    else:
-        prepare_environment('targeted_social_media_domains.txt')
-        # start_threads(10, 'sample-websites.csv')
-        domain = 'advancenetsupport.com'
-        print(domain)
-        try:
-            page_data = get_page_data(domain)
-        except Exception as e:
-            print(e)
-        page_soup = BeautifulSoup(page_data.content, 'html.parser')
-        hrefs = [a['href'] for a in page_soup.find_all('a', href=True)]
-        phone_numbers_set = scrape_phone_numbers(page_soup)
-        media_links_set = scrape_media_links(hrefs)
-        locations_set = scrape_location(hrefs)
-        print(phone_numbers_set)
-        # variable for deciding if entry should be added to data output file ( at leas 1 datapoint should be found )
-        found_data = False
-
-    # write file with extracted data
+    global verbose
+    global total_number_of_websites
+    global unsuccessfuly_scraped_websites
+    global phone_numbers_found
+    global social_media_links_found
+    global locations_found
+    parser = argparse.ArgumentParser(description='Scrape data from a CSV file.')
+    parser.add_argument('-f', '--file', required=True, help='Path to the CSV file')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Print verbose error messages')
+    parser.add_argument('-t', '--threads', required=True, help='Number of threads for scraping')
+    args = parser.parse_args()
+    verbose = args.verbose
+    prepare_environment(targeted_social_media_domains)
+    start_threads(int(args.threads), args.file)
+    # add timestamp to statistics file to be processed by the data_analyzer.py script
+    add_timestamp()
+    # inform java datapoints thread that file is ready to be processed
+    rename_data_file()
+    # run data analysis on statistics file
+    subprocess.run(['python', data_analyzer_path, str((time.time() - start_time))])

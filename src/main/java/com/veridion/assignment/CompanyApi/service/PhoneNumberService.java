@@ -1,2 +1,8 @@
-package com.veridion.assignment.CompanyApi.service;public class PhoneNumberService {
+package com.veridion.assignment.CompanyApi.service;
+
+
+import org.springframework.stereotype.Service;
+
+@Service
+public class PhoneNumberService {
 }

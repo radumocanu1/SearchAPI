@@ -2,7 +2,9 @@ import shutil
 
 import matplotlib.pyplot as plt
 import os
+import sys
 
+scraping_time = float(sys.argv[1])
 script_directory = os.path.dirname(os.path.abspath(__file__))
 path_to_save_statistics_files = f'{script_directory}/statistics/'
 statistics_file_path = f'{script_directory}/statistics.txt'
@@ -35,7 +37,10 @@ def update_global_statistics(stats_list):
     websites_with_locations += stats_list[7]
 
 def mark_file_as_processed(processed_file, timestamp):
-
+    # add scraping time to file
+    file = open(statistics_file_path, 'a')
+    file.write(f'\nCsv file was scraped in {int(scraping_time//60)} minutes and {scraping_time%60} seconds')
+    file.close()
     new_file_name = f"statistics.{timestamp}.processed"
     original_directory = os.path.dirname(processed_file)
     new_file_path = os.path.join(original_directory, new_file_name)
@@ -64,6 +69,7 @@ def extract_data_from_statistics_file(statistics_file_path):
             stats_from_current_thread.append(int(current_line.strip()))
             current_line = file.readline()
         update_global_statistics(stats_from_current_thread)
+    file.close()
 
 
 def plot_analyzed_data(timestamp):
