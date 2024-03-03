@@ -1,6 +1,11 @@
-import matplotlib.pyplot as plt
+import shutil
 
-path_to_save_statistics_files = './statistics/'
+import matplotlib.pyplot as plt
+import os
+
+script_directory = os.path.dirname(os.path.abspath(__file__))
+path_to_save_statistics_files = f'{script_directory}/statistics/'
+statistics_file_path = f'{script_directory}/statistics.txt'
 total_websites = 0
 unable_to_crawl = 0
 phone_numbers_found = 0
@@ -29,6 +34,12 @@ def update_global_statistics(stats_list):
     websites_with_social_media_links += stats_list[6]
     websites_with_locations += stats_list[7]
 
+def mark_file_as_processed(processed_file, timestamp):
+
+    new_file_name = f"statistics.{timestamp}.processed"
+    original_directory = os.path.dirname(processed_file)
+    new_file_path = os.path.join(original_directory, new_file_name)
+    shutil.move(processed_file, new_file_path)
 
 def extract_data_from_statistics_file(statistics_file_path):
     file = open(statistics_file_path, 'r')
@@ -69,7 +80,7 @@ def plot_analyzed_data(timestamp):
 
     # --------- datapoints_extracted ---------
 
-    categories = ['Phone Numbers', 'Social Media Links', 'Locations']
+    categories = [f'{phone_numbers_found} Phone Numbers', f'{social_media_links_found} Social Media Links', f'{locations_found} Locations']
     plt.bar(categories, [phone_numbers_found, social_media_links_found, locations_found], color=['purple', 'green', 'orange'])
     plt.ylabel('Number of Data Points')
     plt.title(f'Datapoints Extracted from {crawled_websites} Websites')
@@ -78,7 +89,7 @@ def plot_analyzed_data(timestamp):
 
     # --------- datapoints_on_each_website ---------
 
-    categories = ['has phone number', 'has Social Links', 'has Locations']
+    categories = [f'{websites_with_phone_numbers} have phone number', f' {websites_with_social_media_links} have Social Links', f'{websites_with_locations} have Locations']
     plt.bar(categories, [websites_with_phone_numbers, websites_with_social_media_links, websites_with_locations],color=['yellow', 'blue', 'darkgrey'])
     plt.ylabel('datapoints per website')
     plt.title(f'Out of  {crawled_websites} Websites')
@@ -86,9 +97,9 @@ def plot_analyzed_data(timestamp):
     plt.close()
 
 
-file_timestamp = extract_data_from_statistics_file('statistics.txt')
+file_timestamp = extract_data_from_statistics_file(statistics_file_path)
 plot_analyzed_data(file_timestamp)
-print(file_timestamp)
+mark_file_as_processed(statistics_file_path, file_timestamp)
 
     
 
