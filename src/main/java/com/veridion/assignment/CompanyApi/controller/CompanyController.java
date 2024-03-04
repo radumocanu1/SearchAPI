@@ -1,51 +1,35 @@
 package com.veridion.assignment.CompanyApi.controller;
 
-import com.veridion.assignment.CompanyApi.model.CompanyDTO;
+import com.veridion.assignment.CompanyApi.model.CompanyDocument;
 import com.veridion.assignment.CompanyApi.model.CompanyRequest;
-import org.springframework.beans.factory.annotation.Value;
+import com.veridion.assignment.CompanyApi.service.CompanyService;
+import com.veridion.assignment.CompanyApi.service.CsvService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/company")
 public class CompanyController {
-    @Value("${file.processing.directory}")
-    String inputCsvDir;
+
+    @Autowired
+    CsvService csvService;
+
+    @Autowired
+    CompanyService companyService;
 
     @GetMapping()
-    public String getBestMatch(@RequestBody CompanyRequest companyRequest) {
-        System.out.println(companyRequest.toString());
-        return new CompanyDTO().toString();
+    public ResponseEntity<CompanyDocument> getBestMatch(@RequestBody CompanyRequest companyRequest) {
+        return companyService.getBestMatch(companyRequest);
     }
 
     @PostMapping("/upload")
-    public String uploadFile(@RequestParam("file") MultipartFile file) {
-        if (file.isEmpty()) {
-            return "Fișierul este gol!";
-        }
-
-        try {
-            Path dirPath = Paths.get(System.getProperty("user.dir") + inputCsvDir);
-
-            // Obține numele fișierului original
-            String fileName = file.getOriginalFilename();
-
-            // Concatenează calea completă cu numele fișierului pentru a obține calea completă a fișierului
-            Path filePath = Paths.get(dirPath.toString(), fileName);
-
-            // Salvează fișierul la calea specificată
-            Files.write(filePath, file.getBytes());
-
-
-            return "AM adaugat";
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
+        return csvService.processCSV(file);
 
     }
 }

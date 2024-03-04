@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.FilenameFilter;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.Date;
@@ -27,8 +28,8 @@ public class ExtractedDatapointsFileProcessor implements Runnable{
         this.companyService = companyService;
     }
 
-    @SneakyThrows
     @Override
+    @SneakyThrows
     public void run(){
         while (true){
             File inputFolder = new File(System.getProperty("user.dir") + datapointsDir);
@@ -39,13 +40,15 @@ public class ExtractedDatapointsFileProcessor implements Runnable{
                 File file_to_process = csvFiles[0];
                 // update elastic document with new datapoints
                 companyService.updateCompaniesDocumentsFromCsv(file_to_process);
+
                 log.info("Finished adding datapoints to elastic...");
                 // after the datapoints were added to elastic, rename the file
                 String newFileName = file_to_process.getName().replace("data", "processed");
                 File newFile = new File(inputFolder, newFileName);
                 file_to_process.renameTo(newFile);
             }
-            Thread.sleep(threadSleepInterval * 1000L);
+                Thread.sleep(threadSleepInterval * 1000L);
+
 
         }
 

@@ -13,10 +13,11 @@ public class CompanyDocument {
 
     private String[] phoneNumbers;
     private String[] socialMediaLinks;
+    @Field(index = false)
     private String[] locations;
-    @Field(name = "company_commercial_name")
+    @Field(name = "company_commercial_name", index = false)
     private String companyCommercialName;
-    @Field(name = "company_legal_name")
+    @Field(name = "company_legal_name", index = false)
     private String companyLegalName;
     @Field(name = "company_all_available_names")
     private String[] companyAllAvailableNames;

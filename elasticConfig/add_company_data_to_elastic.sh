@@ -12,8 +12,8 @@ fi
 
 # Iterați prin fiecare linie a fișierului CSV
 tail -n +2 "$CSV_FILE" | tr -d '\r' | while IFS=, read -r domain company_commercial_name company_legal_name company_all_available_names; do
-    # convert company_all_available_names to array
-    IFS='|' read -ra names_array <<< "$company_all_available_names"
+    # convert company_all_available_names to array and transform to lowercase
+    IFS='|' read -ra names_array <<< "$(echo "$company_all_available_names" | tr '[:upper:]' '[:lower:]')"
 
     # convert array to json
     names_json=$(printf '"%s",' "${names_array[@]}")

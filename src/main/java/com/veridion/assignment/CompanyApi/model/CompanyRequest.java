@@ -6,6 +6,6 @@ import lombok.Data;
 public class CompanyRequest {
     String name;
     String website;
-    String phone_number;
-    String facebook_profile;
+    String phoneNumber;
+    String facebookProfile;
 }
