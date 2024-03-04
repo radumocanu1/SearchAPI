@@ -131,10 +131,10 @@ def scrape_location(hrefs):
         if url.startswith('https://maps.google.com'):
             # case 1: the url has the coordinates of the location
             if '?ll=' in url:
-                continue
-                location = call_google_maps_api(url)
-                if location:
-                    locations_set.add(location)
+                if maps:
+                    location = call_google_maps_api(url)
+                    if location:
+                        locations_set.add(location)
             # case 2: the url contains the exact location (url_encoded)
             match = re.search(location_regex , url)
             if match:
@@ -265,11 +265,14 @@ if __name__ == '__main__':
     global phone_numbers_found
     global social_media_links_found
     global locations_found
+    global maps
     parser = argparse.ArgumentParser(description='Scrape data from a CSV file.')
     parser.add_argument('-f', '--file', required=True, help='Path to the CSV file')
     parser.add_argument('-v', '--verbose', action='store_true', help='Print verbose error messages')
     parser.add_argument('-t', '--threads', required=True, help='Number of threads for scraping')
+    parser.add_argument('-m ', '--maps', action='store_true', help='When it\'s used, script will try to get the from MAPS_API_KEY env variable and use it to query google maps api for location')
     args = parser.parse_args()
+    maps = args.maps
     verbose = args.verbose
     prepare_environment(targeted_social_media_domains)
     start_threads(int(args.threads), args.file)

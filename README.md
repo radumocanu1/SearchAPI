@@ -15,13 +15,13 @@ Location: **scraping_dir/scrapingScript.py**
 
 The script ca be run both as standalone or as part of the POST api workflow (controlled by the application.properties values)
 
-Parameter | Description                            | required | application.properties    |
----------- |----------------------------------------|----------|---------------------------|
--f / --file    | Path to CSV file to be processed       | yes      | file.processing.directory | 
--s / --social | Path to targeted social media links file | yes      | no                        |
--t / --threads    | Number of threads to process the file  | yes      | python.scraping.threads   | 
--v/ --verbose | Should error logs be displayed         | no       | no                        |
--f / --file    | Path to CSV file                       | yes      | file.processing.directory | 
+Parameter | Description                                                                                                 | required | application.properties |
+---------- |-------------------------------------------------------------------------------------------------------------|----------|-----------|
+-f / --file    | Path to CSV file to be processed                                                                            | yes      | file.processing.directory | 
+-t / --threads    | Number of threads to process the file                                                                       | yes      | python.scraping.threads | 
+-v/ --verbose | Should error logs be displayed                                                                              | no       | no        |
+-m / --maps    | Specifies if the MAPS_API_KEY variable is set<br/>so the Google Maps APi can be used for location scraping  | yes      | maps.key |
+
 
 ## How does the scraping script work 
 
@@ -40,6 +40,14 @@ Snippet of statistics file
 Snippet of extracted data file
 
 ![Data](readmeImages/data.png)
+
+Note: see more in **example** directory
+
+## How is data scraped
+
+- for phone numbers we have a strong matching regex ((\b\+?\d{10}\b)|(\(\d{3}\)\s\d{3}.\d{4})|(\d{3}\.\d{3}\.\d{4})|(\d{3}-\d{3}-\d{4})|(\+\d{1,4}-\d{1,4}-\d{1,10})|(\(\+\d{1,4}\) \d{3}-\d{4})|(\(\d{3}\)\d{7}))
+- for social media links, we compare the hrefs elements with the targeted domains in targeted_social_media_domains.txt file
+- for locations we indentify the google maps link and get the location from url or via Google Maps API
 
 ## How does the analyzer script work
 1. Analyzes data based on statistics txt file 

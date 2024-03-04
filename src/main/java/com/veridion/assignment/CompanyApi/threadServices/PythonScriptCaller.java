@@ -11,13 +11,25 @@ import java.io.InputStreamReader;
 public class PythonScriptCaller {
     @Value("${python.scraping.threads}")
     private String number_of_threads;
+
+    @Value("${maps.key}")
+    private boolean maps_key;
     @Value("${python.scriptPath}")
     private String python_script_relative_path;
     @Value("${python.interpreter}")
     private String python_interpreter;
 
     public void callScrapingScript(String csvFilePath) throws IOException, InterruptedException {
-        ProcessBuilder processBuilder = new ProcessBuilder(python_interpreter,System.getProperty("user.dir") + python_script_relative_path, "-t", number_of_threads, "-f", csvFilePath);
+        ProcessBuilder processBuilder;
+        if (maps_key){
+            processBuilder = new ProcessBuilder(python_interpreter,System.getProperty("user.dir") + python_script_relative_path, "-t", number_of_threads, "-f", csvFilePath, "--maps");
+        }
+        else{
+            processBuilder = new ProcessBuilder(python_interpreter,System.getProperty("user.dir") + python_script_relative_path, "-t", number_of_threads, "-f", csvFilePath);
+
+        }
+
+
         Process process = processBuilder.start();
         // wait for script to finish
         process.waitFor();
