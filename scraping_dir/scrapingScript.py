@@ -10,14 +10,22 @@ from bs4 import BeautifulSoup
 from requests.exceptions import RequestException, SSLError
 import time
 import subprocess
+import shutil
 
 
-file_write_lock = threading.Lock()
+script_directory = os.path.dirname(os.path.abspath(__file__))
+stats_file_write_lock = threading.Lock()
+data_file_write_lock = threading.Lock()
 # used to store specific information for each thread (such as scraping statistics)
 local_thread_instance = threading.local()
-file_with_comments = './comments_for_stats_file.txt'
-stats_file = './statistics.txt'
+file_with_comments = f'{script_directory}/comments_for_stats_file.txt'
+stats_file = f'{script_directory}/statistics.txt'
+data_file = f'{script_directory}/extracted_data/still_processing.csv'
+targeted_social_media_domains = f'{script_directory}/targeted_social_media_domains.txt'
+data_analyzer_path = f'{script_directory}/data_analyzer.py'
 def init_local_thread_instance():
+    # dict for storing data found by each thred
+    local_thread_instance.datapoints = {}
     # values used for data analysis
     local_thread_instance.total_number_of_websites = 0
     local_thread_instance.unsuccessfully_scraped_websites = 0
@@ -28,10 +36,24 @@ def init_local_thread_instance():
     local_thread_instance.website_with_phone_number = 0
     local_thread_instance.website_with_location = 0
 
+def add_datapoints_to_data_extracted_file_asynchronous():
+    with open(data_file, 'a', newline='') as file:
+        data_file_write_lock.acquire()
+        try:
+            csv_writer = csv.writer(file, delimiter=',')
 
-def add_stats_to_statistics_file_synchronous(thread_number):
+            for domain, data in local_thread_instance.datapoints.items():
+                row = [domain]
+                data_strings = ['|'.join(map(str, data_set)) for data_set in data]
+                row.extend(data_strings)
+                csv_writer.writerow(row)
+        finally:
+            # Release the lock after writing to the file
+            data_file_write_lock.release()
+
+def add_stats_to_statistics_file_asynchronous(thread_number):
     with open(stats_file, 'a') as file:
-        file_write_lock.acquire()
+        stats_file_write_lock.acquire()
         try:
             file.write(f'----------- Thread {thread_number} -----------\n')
             file.write(str(local_thread_instance.total_number_of_websites) + '\n')
@@ -44,7 +66,7 @@ def add_stats_to_statistics_file_synchronous(thread_number):
             file.write(str(local_thread_instance.website_with_location) + '\n')
         finally:
             # Release the lock after writing to the file
-            file_write_lock.release()
+            stats_file_write_lock.release()
 
 def generate_empty_stats_file():
     with open(file_with_comments, 'r') as source_file:
@@ -52,11 +74,23 @@ def generate_empty_stats_file():
     with open(stats_file, 'w') as destination_file:
         destination_file.write(file_content)
 
+def rename_data_file():
+    new_file_name = f"data-{get_current_timestamp()}.csv"
+    original_directory = os.path.dirname(data_file)
+    new_file_path = os.path.join(original_directory, new_file_name)
+    shutil.move(data_file, new_file_path)
+
+def generate_empty_data_file():
+    with open(data_file, 'w') as file:
+        file.write('domain,phone number,social media links,locations\n')
+
+
 def prepare_environment(social_media_domains_file_path):
     global social_media_platforms
     global phone_regex
     global location_regex
     global api_key
+    generate_empty_data_file()
     generate_empty_stats_file()
     api_key = os.environ['MAPS_API_KEY']
     social_media_domains_file = open(social_media_domains_file_path)
@@ -97,10 +131,10 @@ def scrape_location(hrefs):
         if url.startswith('https://maps.google.com'):
             # case 1: the url has the coordinates of the location
             if '?ll=' in url:
-                continue
-                location = call_google_maps_api(url)
-                if location:
-                    locations_set.add(location)
+                if maps:
+                    location = call_google_maps_api(url)
+                    if location:
+                        locations_set.add(location)
             # case 2: the url contains the exact location (url_encoded)
             match = re.search(location_regex , url)
             if match:
@@ -120,6 +154,14 @@ def get_page_data(domain):
     except SSLError:
         # try again without tls encryption
         page_data = requests.get('http://' + domain, timeout=3)
+    except RequestException:
+        # try again with headers (for websites with restricted scraping access)
+        headers = {
+            "Host": f'{domain}',
+            "User-Agent": "curl/8.4.0",
+            "Accept": "*/*"
+        }
+        page_data = requests.get('https://' + domain, headers= headers, timeout=3)
     return page_data
 
 
@@ -129,7 +171,6 @@ def scrape_websites_from_csv_chunk(csv_chunk):
     for row in csv_chunk:
         local_thread_instance.total_number_of_websites += 1
         domain = row[0]
-        print(domain)
         try:
             page_data = get_page_data(domain)
         except Exception as e:
@@ -142,19 +183,23 @@ def scrape_websites_from_csv_chunk(csv_chunk):
         phone_numbers_set = scrape_phone_numbers(page_soup)
         media_links_set = scrape_media_links(hrefs)
         locations_set = scrape_location(hrefs)
+        # variable for deciding if entry should be added to data output file ( at leas 1 datapoint should be found )
+        found_data = False
         # for data analysis part
         if phone_numbers_set:
+            found_data = True
             local_thread_instance.website_with_phone_number += 1
             local_thread_instance.phone_numbers_found += len(phone_numbers_set)
         if media_links_set:
+            found_data = True
             local_thread_instance.website_with_social_media_link += 1
             local_thread_instance.social_media_links_found += len(media_links_set)
         if locations_set:
+            found_data = True
             local_thread_instance.website_with_location += 1
             local_thread_instance.locations_found += len(locations_set)
-        # print(phone_numbers_set)
-        # print(media_links_set)
-        # print(locations_set)
+        if found_data:
+            local_thread_instance.datapoints[domain] = [phone_numbers_set,media_links_set,locations_set]
 
 def start_threads(no_of_threads, csv_file):
     with open(csv_file, 'r') as csvfile:
@@ -191,8 +236,12 @@ def start_threads(no_of_threads, csv_file):
 def worker_function(csv_chunk, thread_number):
     init_local_thread_instance()
     scrape_websites_from_csv_chunk(csv_chunk)
-    add_stats_to_statistics_file_synchronous(thread_number)
+    add_datapoints_to_data_extracted_file_asynchronous()
+    add_stats_to_statistics_file_asynchronous(thread_number)
     return
+
+def get_current_timestamp():
+    return str(datetime.now().strftime("%d.%m.%Y-%H.%M.%S"))
 
 def add_timestamp():
     with open(stats_file, 'r') as file:
@@ -201,7 +250,7 @@ def add_timestamp():
     # Găsește a doua linie care nu începe cu #
     for index, line in enumerate(lines):
         if not line.startswith('#'):
-            lines.insert(index + 1, str(datetime.now().strftime("%d.%m.%Y-%H.%M.%S")) + '\n')
+            lines.insert(index + 1, get_current_timestamp() + '\n')
             break
 
     with open(stats_file, 'w') as file:
@@ -210,29 +259,26 @@ def add_timestamp():
 
 if __name__ == '__main__':
     start_time = time.time()
-    if True:
-        global verbose
-        global total_number_of_websites
-        global unsuccessfuly_scraped_websites
-        global phone_numbers_found
-        global social_media_links_found
-        global locations_found
-        parser = argparse.ArgumentParser(description='Scrape data from a CSV file.')
-        parser.add_argument('-f', '--file', required=True, help='Path to the CSV file')
-        parser.add_argument('-s', '--social', required=True, help='Path to the targeted social media domains file')
-        parser.add_argument('-v', '--verbose', action='store_true', help='Print verbose error messages')
-        parser.add_argument('-t', '--threads', required=True, help='Number of threads for scraping')
-        args = parser.parse_args()
-        verbose = args.verbose
-        prepare_environment(args.social)
-        start_threads(int(args.threads), args.file)
-        print("A durat " + str((time.time() - start_time) // 60) + "minute")
-        # add timestamp to statistics file to be processed by the data_analyzer.py script
-        add_timestamp()
-        # run data analysis on statistics file
-        subprocess.run(['python', 'data_analyzer.py'])
-
-    else:
-        prepare_environment('targeted_social_media_domains.txt')
-        start_threads(10, 'sample-websites.csv')
-    # write file with extracted data
+    global verbose
+    global total_number_of_websites
+    global unsuccessfuly_scraped_websites
+    global phone_numbers_found
+    global social_media_links_found
+    global locations_found
+    global maps
+    parser = argparse.ArgumentParser(description='Scrape data from a CSV file.')
+    parser.add_argument('-f', '--file', required=True, help='Path to the CSV file')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Print verbose error messages')
+    parser.add_argument('-t', '--threads', required=True, help='Number of threads for scraping')
+    parser.add_argument('-m ', '--maps', action='store_true', help='When it\'s used, script will try to get the from MAPS_API_KEY env variable and use it to query google maps api for location')
+    args = parser.parse_args()
+    maps = args.maps
+    verbose = args.verbose
+    prepare_environment(targeted_social_media_domains)
+    start_threads(int(args.threads), args.file)
+    # add timestamp to statistics file to be processed by the data_analyzer.py script
+    add_timestamp()
+    # inform java datapoints thread that file is ready to be processed
+    rename_data_file()
+    # run data analysis on statistics file
+    subprocess.run(['python', data_analyzer_path, str((time.time() - start_time))])
