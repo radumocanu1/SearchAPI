@@ -41,7 +41,6 @@ public class CsvService {
 
     private boolean isValidCSV(MultipartFile file) {
         if (!Objects.requireNonNull(file.getOriginalFilename()).toLowerCase().endsWith(".csv")) {
-            System.out.println(file.getOriginalFilename());
             return false;
         }
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {

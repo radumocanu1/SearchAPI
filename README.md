@@ -13,7 +13,7 @@ This projects achieves the following:
 # Scraping part + analysis part (scraping_dir)
 Location: **scraping_dir/scrapingScript.py** 
 
-The script ca be run both as standalone or as part of the POST api workflow (controlled by the application.properties values)
+The script can be run both as standalone or as part of the POST api workflow (controlled by the application.properties values)
 
 Parameter | Description                                                                                                 | required | application.properties |
 ---------- |-------------------------------------------------------------------------------------------------------------|----------|-----------|
@@ -28,7 +28,7 @@ Parameter | Description                                                         
 1. Each thread receives an equal chunk of data to process (the last thread receives everything that is left)
 2. Threads start to process -> storing data in local thread variables
 3. Parent process generates two files *statistics.txt* (current dir) and *still_processing.txt* (extracted data dir)
-4. When each thread finishes scraping, acquires locks and write to those files  
+4. When each thread finishes scraping, it acquires lock on those files and writes to them 
 5. After threads finish, parent process computes running time and writes it along with the timestamp to the statistics.txt file 
 6. Marks the data file as "ready to be processed" -> for the java thread
 7. Runs analyze script on statistics file
@@ -101,7 +101,7 @@ docker run -d -p 5601:5601  --network customnetwork -v kibana.yaml:/usr/share/ki
 ```
 Note: you should see kibana UI on http://localhost:5601/ 
 
-use git bash to run add data to elastic script
+open git bash, navigate to elasticConfig dir and run add data to elastic script
 ```
 bash add_company_data_to_elastic.sh
 ```
@@ -109,8 +109,30 @@ bash add_company_data_to_elastic.sh
 Choose the desired parameters in application.properties
 
 Run spring app
+```
+mvn spring-boot:run
+```
+POST requests -> localhost:8080/company/upload
+
+![img_1.png](readmeImages/img_1.png)
 
 GET requests -> localhost:8080/company 
+
 ![img.png](readmeImages/img.png)
-POST requests -> localhost:8080/company/upload
-![img_1.png](readmeImages/img_1.png)
+
+
+
+# When are the datapoints updated in elasticsearch?
+1. when the file in **scraping_dir/extracted_data** is marked as processed with the current timestamp
+2. when the processing thread logs: Finished adding datapoints to elastic...
+3. you can check on kibana 
+
+Note: Depending on your system + number of threads set, it should take around 3 minutes
+
+## Requirements 
+
+- jdk 17
+- mvn 
+- python3
+- python libraries (can be installed with pip) matplotlib, requests, bs4, urllib, csv, 
+- docker

@@ -10,7 +10,6 @@ if [ ! -f "$CSV_FILE" ]; then
     exit 1
 fi
 
-# Iterați prin fiecare linie a fișierului CSV
 tail -n +2 "$CSV_FILE" | tr -d '\r' | while IFS=, read -r domain company_commercial_name company_legal_name company_all_available_names; do
     # convert company_all_available_names to array and transform to lowercase
     IFS='|' read -ra names_array <<< "$(echo "$company_all_available_names" | tr '[:upper:]' '[:lower:]')"
@@ -20,8 +19,8 @@ tail -n +2 "$CSV_FILE" | tr -d '\r' | while IFS=, read -r domain company_commerc
     names_json="[${names_json%,}]"
 
     # add document to json
-    echo '{"index":{"_index":"'"$INDEX"'","_type":"'"$TYPE"'","_id":"'"$domain"'"}}' >> data.json
-    echo '{"domain":"'"$domain"'","company_commercial_name":"'"$company_commercial_name"'","company_legal_name":"'"$company_legal_name"'","company_all_available_names":'"$names_json"',"phoneNumbers":[],"socialMediaLinks":[],"locations":[]}' >> data.json
+    echo "{\"index\":{\"_index\":\"$INDEX\",\"_type\":\"$TYPE\",\"_id\":\"$domain\"}}" >> data.json
+    echo "{\"domain\":\"$domain\",\"company_commercial_name\":\"$company_commercial_name\",\"company_legal_name\":\"$company_legal_name\",\"company_all_available_names\":$names_json,\"phoneNumbers\":[],\"socialMediaLinks\":[],\"locations\":[]}" >> data.json
 done
 
 # update elasticsearch instance
